@@ -13,7 +13,7 @@ unit TechniSatAPI;
 |___________________________________________________________}
 
 //define API basics
-{$DEFINE APIVERSION:='1.0'}
+{$DEFINE APIVERSION:='1.1'}
 //{$DEFINE TSAPI_DEBUG}
 {___________________________________________________________}
 
@@ -32,6 +32,7 @@ function tsapi_Info_KeepAlive(URL: String; TimeoutMS: Integer): Boolean;
 function tsapi_rcuButtonRequest(URL: String; PIN: String; ButtonCode: Byte; ButtonState: String; TimeoutMS: Integer): Boolean;
 function tsapi_rcuButtonRequestByName(DeviceName: String; PIN: String; ButtonCode: Byte; ButtonState: String; TimeoutMS: Integer): Boolean;
 function tsapi_rcuButtonRequestBySerial(Serial: String; PIN: String; ButtonCode: Byte; ButtonState: String; TimeoutMS: Integer): Boolean;
+function tsapi_zoomRequest(URL: String; PIN: String; ZoomValue: Integer; TimeoutMS: Integer): Boolean;
 function tsapi_BtnCodeByName(ButtonName: String): Byte;
 function tsapi_BtnDescByName(ButtonName: String): String;
 function tsapi_BtnNameByCode(ButtonCode: Byte): String;
@@ -139,7 +140,7 @@ const
       (Code:   18; Name: 'BTN_PROG_UP';    Description: 'PROGRAM UP'),
       (Code:   19; Name: 'BTN_PROG_DOWN';  Description: 'PROGRAM DOWN'),
       (Code:   20; Name: 'BTN_BACK';       Description: 'BACK'),
-      (Code:   21; Name: 'BTN_AB';         Description: 'AB'),
+      (Code:   21; Name: 'BTN_AUDIO';      Description: 'AUDIO'),
       (Code:   22; Name: 'BTN_STILL';      Description: 'STILL'),
       (Code:   23; Name: 'BTN_EPG';        Description: 'SFI/EPG'),
       (Code:   24; Name: 'BTN_EXT';        Description: 'EXT'),
@@ -151,7 +152,7 @@ const
       (Code:   30; Name: 'BTN_UP';         Description: 'UP'),
       (Code:   31; Name: 'BTN_DOWN';       Description: 'DOWN'),
       (Code:   32; Name: 'BTN_MENU';       Description: 'MENU'),
-      (Code:   33; Name: 'BTN_TOGGLEAUTV'; Description: 'TOGGLE AU/TV'),
+      (Code:   33; Name: 'BTN_TVRADIO';    Description: 'TV/RADIO'),
       (Code:   34; Name: 'BTN_LEFT';       Description: 'LEFT'),
       (Code:   35; Name: 'BTN_RIGHT';      Description: 'RIGHT'),
       (Code:   36; Name: 'BTN_OK';         Description: 'OK'),
@@ -159,7 +160,7 @@ const
       (Code:   38; Name: 'BTN_GREEN';      Description: 'GREEN'),
       (Code:   39; Name: 'BTN_YELLOW';     Description: 'YELLOW'),
       (Code:   40; Name: 'BTN_BLUE';       Description: 'BLUE'),
-      (Code:   41; Name: 'BTN_HOOK';       Description: 'HOOK'),
+      (Code:   41; Name: 'BTN_OPTION';     Description: 'OPTION'),
       (Code:   42; Name: 'BTN_SLEEP';      Description: 'SLEEP'),
       (Code:   43; Name: 'BTN_REC';        Description: 'RECORD'),
       (Code:   44; Name: 'BTN_PIP';        Description: 'PIP/PAP'),
@@ -920,6 +921,65 @@ begin
   on E:Exception do
     begin
       {$IFDEF FSAPI_DEBUG}E.Message:=STR_Error+'tsapi_rcuButtonRequestBySerial -> '+E.Message; DebugPrint(E.Message);{$ENDIF}
+      Result:=false;
+    end;
+  end;
+end;
+
+//------------------------------------------------------------------------------
+// Zoom Request
+//------------------------------------------------------------------------------
+function tsapi_zoomRequest(URL: String; PIN: String; ZoomValue: Integer; TimeoutMS: Integer): Boolean;
+//Device zoom request
+var
+  ZoomRequest:    Boolean;
+  UDPClient:      TIdUDPClient;
+  UDPPeerPort:    Word;
+  UDPPeerIP:      String;
+  Response:       String;
+
+begin
+  try
+  UDPClient:=TIdUDPClient.Create(nil);
+  ZoomRequest:=false;
+
+  //check if URL and zoom value is available and not invalid
+  if (URL='') or (ZoomValue=0) then
+    begin
+      Result:=ZoomRequest;
+      exit;
+    end;
+
+  try
+    //check if device reacts on keep alive request
+    if tsapi_Info_KeepAlive(URL, TimeoutMS)=false then
+      begin
+        //keep alive failed so try to authenticate
+        if tsapi_Info_Authentication(URL, PIN, TimeoutMS)=false then
+          begin
+            //Authentication failed also therefore button request can not be send
+            Result:=ZoomRequest;
+            exit;
+          end;
+      end;
+
+    //send zoom request (there will be no response from the device)
+    UDPClient.BoundIP:=GStack.LocalAddress;
+    UDPClient.BoundPort:=tsapi_ListenerPort;
+    UDPClient.Port:=tsapi_ListenerPort;
+    UDPClient.BroadcastEnabled:=true;
+    UDPClient.Send(URL, tsapi_ListenerPort, '<zoomRequest zoom="'+IntToStr(ZoomValue)+'"/>');
+    ZoomRequest:=true;
+  finally
+    UDPClient.Free;
+  end;
+
+  {$IFDEF LCL}Application.ProcessMessages;{$ENDIF}
+  Result:=ZoomRequest;
+  except
+  on E:Exception do
+    begin
+      {$IFDEF FSAPI_DEBUG}E.Message:=STR_Error+'tsapi_zoomRequest -> '+E.Message; DebugPrint(E.Message);{$ENDIF}
       Result:=false;
     end;
   end;
