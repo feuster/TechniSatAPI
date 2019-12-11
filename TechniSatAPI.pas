@@ -45,13 +45,13 @@ type
     Description:  String;
   end;
 
+{$IFDEF TSAPI_DEBUG}
 var
-  {$IFDEF TSAPI_DEBUG}
   //storage variable for last debug message
   tsapi_Debug_NoShowMessage:  Boolean;
   tsapi_Debug_Message:        String;
-  {$ENDIF}
-  tsapi_Dummy: Byte = 0;
+{$ENDIF}
+
 
 const
   API_Version:  String = APIVERSION;
@@ -116,6 +116,7 @@ const
   tsapi_ButtonState_released:     String  = 'released';
   tsapi_ButtonState_hold:         String  = 'hold';
   tsapi_ButtonStates:             array[0..2] of String = ('pressed', 'released', 'hold');
+  tsapi_TimeoutMS_Max:            Integer = 1000;
 
   tsapi_Buttons: array[0..128] of TButton =
     (
@@ -367,12 +368,12 @@ begin
     if TimeoutMS>0 then
       UDPClient.ReceiveTimeout:=TimeoutMS
     else
-      UDPClient.ReceiveTimeout:=3000;
+      UDPClient.ReceiveTimeout:=tsapi_TimeoutMS_Max;
     repeat
       {$IFDEF LCL}Application.ProcessMessages;{$ENDIF}
       Response:=UDPClient.ReceiveString(UDPPeerIP, UDPPeerPort);
       //discovery request response received
-      if (UDPPeerPort<>0) and (GStack.LocalAddress<>UDPPeerIP)then
+      if (UDPPeerPort<>0) and (GStack.LocalAddress<>UDPPeerIP) then
         begin
           {$IFDEF TSAPI_DEBUG}{$IFNDEF LCL}
           WriteLn(STR_Info,'Response from ',Format('%s:%d', [UDPPeerIP, UDPPeerPort]));
@@ -465,12 +466,12 @@ begin
     if TimeoutMS>0 then
       UDPClient.ReceiveTimeout:=TimeoutMS
     else
-      UDPClient.ReceiveTimeout:=3000;
+      UDPClient.ReceiveTimeout:=tsapi_TimeoutMS_Max;
     repeat
       {$IFDEF LCL}Application.ProcessMessages;{$ENDIF}
       Response:=UDPClient.ReceiveString(UDPPeerIP, UDPPeerPort);
       //discovery request response received
-      if (UDPPeerPort<>0) and (GStack.LocalAddress<>UDPPeerIP)then
+      if (UDPPeerPort<>0) and (GStack.LocalAddress<>UDPPeerIP) then
         begin
           {$IFDEF TSAPI_DEBUG}{$IFNDEF LCL}
           WriteLn(STR_Info,'Response from ',Format('%s:%d', [UDPPeerIP, UDPPeerPort]));
@@ -581,12 +582,12 @@ begin
     if TimeoutMS>0 then
       UDPClient.ReceiveTimeout:=TimeoutMS
     else
-      UDPClient.ReceiveTimeout:=3000;
+      UDPClient.ReceiveTimeout:=tsapi_TimeoutMS_Max;
     repeat
       {$IFDEF LCL}Application.ProcessMessages;{$ENDIF}
       Response:=UDPClient.ReceiveString(UDPPeerIP, UDPPeerPort);
       //discovery request response received
-      if (UDPPeerPort<>0) and (GStack.LocalAddress<>UDPPeerIP)then
+      if (UDPPeerPort<>0) and (GStack.LocalAddress<>UDPPeerIP) then
         begin
           {$IFDEF TSAPI_DEBUG}{$IFNDEF LCL}
           WriteLn(STR_Info,'Response from ',Format('%s:%d', [UDPPeerIP, UDPPeerPort]));
@@ -664,12 +665,12 @@ begin
     if TimeoutMS>0 then
       UDPClient.ReceiveTimeout:=TimeoutMS
     else
-      UDPClient.ReceiveTimeout:=3000;
+      UDPClient.ReceiveTimeout:=tsapi_TimeoutMS_Max;
     repeat
       {$IFDEF LCL}Application.ProcessMessages;{$ENDIF}
       Response:=UDPClient.ReceiveString(UDPPeerIP, UDPPeerPort);
       //keep alive request response received
-      if (UDPPeerPort<>0) and (GStack.LocalAddress<>UDPPeerIP)then
+      if (UDPPeerPort<>0) and (GStack.LocalAddress<>UDPPeerIP) then
         begin
           {$IFDEF TSAPI_DEBUG}{$IFNDEF LCL}
           WriteLn(STR_Info,'Response from ',Format('%s:%d', [UDPPeerIP, UDPPeerPort]));
@@ -754,12 +755,12 @@ begin
     if TimeoutMS>0 then
       UDPClient.ReceiveTimeout:=TimeoutMS
     else
-      UDPClient.ReceiveTimeout:=3000;
+      UDPClient.ReceiveTimeout:=tsapi_TimeoutMS_Max;
     repeat
       {$IFDEF LCL}Application.ProcessMessages;{$ENDIF}
       Response:=UDPClient.ReceiveString(UDPPeerIP, UDPPeerPort);
       //keep rcu button request response received
-      if (UDPPeerPort<>0) and (GStack.LocalAddress<>UDPPeerIP)then
+      if (UDPPeerPort<>0) and (GStack.LocalAddress<>UDPPeerIP) then
         begin
           {$IFDEF TSAPI_DEBUG}{$IFNDEF LCL}
           WriteLn(STR_Info,'Response from ',Format('%s:%d', [UDPPeerIP, UDPPeerPort]));
@@ -934,8 +935,6 @@ function tsapi_zoomRequest(URL: String; PIN: String; ZoomValue: Integer; Timeout
 var
   ZoomRequest:    Boolean;
   UDPClient:      TIdUDPClient;
-  UDPPeerPort:    Word;
-  UDPPeerIP:      String;
 
 begin
   try
