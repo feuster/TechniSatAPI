@@ -936,7 +936,6 @@ var
   UDPClient:      TIdUDPClient;
   UDPPeerPort:    Word;
   UDPPeerIP:      String;
-  Response:       String;
 
 begin
   try
