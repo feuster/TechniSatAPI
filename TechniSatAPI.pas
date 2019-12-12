@@ -287,6 +287,10 @@ begin
   //set default result to invalid button
   Result:=128;
 
+  //allow also KEY_ for BTN_
+  if LeftStr(UpperCase(ButtonName),4)='KEY_' then
+    ButtonName:=StringReplace(ButtonName, 'KEY_', 'BTN_', [rfReplaceAll, rfIgnoreCase]);
+
   //Check if string is not empty and starts with BTN_
   if (ButtonName<>'') and (LeftStr(UpperCase(ButtonName),4)<>'BTN_') then
     exit;
@@ -962,7 +966,7 @@ begin
         //keep alive failed so try to authenticate
         if tsapi_Info_Authentication(URL, PIN, TimeoutMS)=false then
           begin
-            //Authentication failed also therefore button request can not be send
+            //Authentication failed also therefore request can not be send
             Result:=ZoomRequest;
             exit;
           end;
@@ -1018,7 +1022,7 @@ begin
         //keep alive failed so try to authenticate
         if tsapi_Info_Authentication(URL, PIN, TimeoutMS)=false then
           begin
-            //Authentication failed also therefore button request can not be send
+            //Authentication failed also therefore request can not be send
             Result:=MouseRequest;
             exit;
           end;
@@ -1071,7 +1075,7 @@ begin
         //keep alive failed so try to authenticate
         if tsapi_Info_Authentication(URL, PIN, TimeoutMS)=false then
           begin
-            //Authentication failed also therefore button request can not be send
+            //Authentication failed also therefore request can not be send
             Result:=MouseRequest;
             exit;
           end;
@@ -1139,7 +1143,7 @@ begin
         //keep alive failed so try to authenticate
         if tsapi_Info_Authentication(URL, PIN, TimeoutMS)=false then
           begin
-            //Authentication failed also therefore button request can not be send
+            //Authentication failed also therefore request can not be send
             Result:=MouseRequest;
             exit;
           end;
