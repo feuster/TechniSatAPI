@@ -33,6 +33,9 @@ function tsapi_rcuButtonRequest(URL: String; PIN: String; ButtonCode: Byte; Butt
 function tsapi_rcuButtonRequestByName(DeviceName: String; PIN: String; ButtonCode: Byte; ButtonState: String; TimeoutMS: Integer): Boolean;
 function tsapi_rcuButtonRequestBySerial(Serial: String; PIN: String; ButtonCode: Byte; ButtonState: String; TimeoutMS: Integer): Boolean;
 function tsapi_zoomRequest(URL: String; PIN: String; ZoomValue: Integer; TimeoutMS: Integer): Boolean;
+function tsapi_mouseMoveRequest(URL: String; PIN: String; deltaX: Integer; deltaY: Integer; TimeoutMS: Integer): Boolean;
+function tsapi_mouseScrollRequest(URL: String; PIN: String; deltaS: Integer; TimeoutMS: Integer): Boolean;
+function tsapi_mouseClickRequest(URL: String; PIN: String; MouseButton: String; MouseState: String; TimeoutMS: Integer): Boolean;
 function tsapi_BtnCodeByName(ButtonName: String): Byte;
 function tsapi_BtnDescByName(ButtonName: String): String;
 function tsapi_BtnNameByCode(ButtonCode: Byte): String;
@@ -116,6 +119,10 @@ const
   tsapi_ButtonState_released:     String  = 'released';
   tsapi_ButtonState_hold:         String  = 'hold';
   tsapi_ButtonStates:             array[0..2] of String = ('pressed', 'released', 'hold');
+  tsapi_MouseState_pressed:       String  = 'pressed';
+  tsapi_MouseState_released:      String  = 'released';
+  tsapi_MouseButtons:             array[0..2] of String = ('left', 'middle', 'right');
+  tsapi_MouseStates:              array[0..1] of String = ('pressed', 'released');
   tsapi_TimeoutMS_Max:            Integer = 1000;
 
   tsapi_Buttons: array[0..128] of TButton =
@@ -978,6 +985,183 @@ begin
   on E:Exception do
     begin
       {$IFDEF FSAPI_DEBUG}E.Message:=STR_Error+'tsapi_zoomRequest -> '+E.Message; DebugPrint(E.Message);{$ENDIF}
+      Result:=false;
+    end;
+  end;
+end;
+
+//------------------------------------------------------------------------------
+// Mouse Requests
+//------------------------------------------------------------------------------
+function tsapi_mouseMoveRequest(URL: String; PIN: String; deltaX: Integer; deltaY: Integer; TimeoutMS: Integer): Boolean;
+//Mouse move request
+var
+  MouseRequest:   Boolean;
+  UDPClient:      TIdUDPClient;
+
+begin
+  try
+  UDPClient:=TIdUDPClient.Create(nil);
+  MouseRequest:=false;
+
+  //check if URL is available
+  if URL='' then
+    begin
+      Result:=MouseRequest;
+      exit;
+    end;
+
+  try
+    //check if device reacts on keep alive request
+    if tsapi_Info_KeepAlive(URL, TimeoutMS)=false then
+      begin
+        //keep alive failed so try to authenticate
+        if tsapi_Info_Authentication(URL, PIN, TimeoutMS)=false then
+          begin
+            //Authentication failed also therefore button request can not be send
+            Result:=MouseRequest;
+            exit;
+          end;
+      end;
+
+    //send mouse move request (there will be no response from the device)
+    UDPClient.BoundIP:=GStack.LocalAddress;
+    UDPClient.BoundPort:=tsapi_ListenerPort;
+    UDPClient.Port:=tsapi_ListenerPort;
+    UDPClient.BroadcastEnabled:=true;
+    UDPClient.Send(URL, tsapi_ListenerPort, '<mouseMoveRequest deltaX="'+IntToStr(deltaX)+'" deltaY="'+IntToStr(deltaY)+'"/>');
+    MouseRequest:=true;
+  finally
+    UDPClient.Free;
+  end;
+
+  {$IFDEF LCL}Application.ProcessMessages;{$ENDIF}
+  Result:=MouseRequest;
+  except
+  on E:Exception do
+    begin
+      {$IFDEF FSAPI_DEBUG}E.Message:=STR_Error+'tsapi_mouseMoveRequest -> '+E.Message; DebugPrint(E.Message);{$ENDIF}
+      Result:=false;
+    end;
+  end;
+end;
+
+function tsapi_mouseScrollRequest(URL: String; PIN: String; deltaS: Integer; TimeoutMS: Integer): Boolean;
+//Mouse move request
+var
+  MouseRequest:   Boolean;
+  UDPClient:      TIdUDPClient;
+
+begin
+  try
+  UDPClient:=TIdUDPClient.Create(nil);
+  MouseRequest:=false;
+
+  //check if URL is available
+  if URL='' then
+    begin
+      Result:=MouseRequest;
+      exit;
+    end;
+
+  try
+    //check if device reacts on keep alive request
+    if tsapi_Info_KeepAlive(URL, TimeoutMS)=false then
+      begin
+        //keep alive failed so try to authenticate
+        if tsapi_Info_Authentication(URL, PIN, TimeoutMS)=false then
+          begin
+            //Authentication failed also therefore button request can not be send
+            Result:=MouseRequest;
+            exit;
+          end;
+      end;
+
+    //send mouse move request (there will be no response from the device)
+    UDPClient.BoundIP:=GStack.LocalAddress;
+    UDPClient.BoundPort:=tsapi_ListenerPort;
+    UDPClient.Port:=tsapi_ListenerPort;
+    UDPClient.BroadcastEnabled:=true;
+    UDPClient.Send(URL, tsapi_ListenerPort, '<mouseScrollRequest deltaS="'+IntToStr(deltaS)+'"/>');
+    MouseRequest:=true;
+  finally
+    UDPClient.Free;
+  end;
+
+  {$IFDEF LCL}Application.ProcessMessages;{$ENDIF}
+  Result:=MouseRequest;
+  except
+  on E:Exception do
+    begin
+      {$IFDEF FSAPI_DEBUG}E.Message:=STR_Error+'tsapi_mouseScrollRequest -> '+E.Message; DebugPrint(E.Message);{$ENDIF}
+      Result:=false;
+    end;
+  end;
+end;
+
+function tsapi_mouseClickRequest(URL: String; PIN: String; MouseButton: String; MouseState: String; TimeoutMS: Integer): Boolean;
+//Mouse move request
+var
+  MouseRequest:   Boolean;
+  UDPClient:      TIdUDPClient;
+
+begin
+  try
+  UDPClient:=TIdUDPClient.Create(nil);
+  MouseRequest:=false;
+
+  //check if URL and button code is available and not invalid
+  if URL='' then
+    begin
+      Result:=MouseRequest;
+      exit;
+    end;
+
+  //check if MouseButton is correct
+  if AnsiIndexText(MouseButton, tsapi_MouseButtons)<0 then
+    MouseButton:=tsapi_MouseButtons[0];
+
+  //check if MouseState is correct
+  if AnsiIndexText(MouseState, tsapi_MouseStates)<0 then
+    MouseState:=tsapi_MouseStates[0];
+
+  //check if URL is available
+  if URL='' then
+    begin
+      Result:=MouseRequest;
+      exit;
+    end;
+
+  try
+    //check if device reacts on keep alive request
+    if tsapi_Info_KeepAlive(URL, TimeoutMS)=false then
+      begin
+        //keep alive failed so try to authenticate
+        if tsapi_Info_Authentication(URL, PIN, TimeoutMS)=false then
+          begin
+            //Authentication failed also therefore button request can not be send
+            Result:=MouseRequest;
+            exit;
+          end;
+      end;
+
+    //send mouse button click request (there will be no response from the device)
+    UDPClient.BoundIP:=GStack.LocalAddress;
+    UDPClient.BoundPort:=tsapi_ListenerPort;
+    UDPClient.Port:=tsapi_ListenerPort;
+    UDPClient.BroadcastEnabled:=true;
+    UDPClient.Send(URL, tsapi_ListenerPort, '<mouseButtonRequest button="'+MouseButton+'" state="'+MouseState+'"/>');
+    MouseRequest:=true;
+  finally
+    UDPClient.Free;
+  end;
+
+  {$IFDEF LCL}Application.ProcessMessages;{$ENDIF}
+  Result:=MouseRequest;
+  except
+  on E:Exception do
+    begin
+      {$IFDEF FSAPI_DEBUG}E.Message:=STR_Error+'tsapi_mouseClickRequest -> '+E.Message; DebugPrint(E.Message);{$ENDIF}
       Result:=false;
     end;
   end;
