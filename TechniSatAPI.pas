@@ -20,7 +20,7 @@ unit TechniSatAPI;
 interface
 
 uses
-  Classes, SysUtils, IdUDPClient, IdStack, StrUtils, XMLRead, DOM
+  Classes, SysUtils, IdUDPClient, IdStack, IdGlobal, StrUtils, XMLRead, DOM
   {$IFDEF LCL}, Forms{$IFDEF TSAPI_DEBUG}, Dialogs{$ENDIF}{$ENDIF}
   ;
 
@@ -36,6 +36,7 @@ function tsapi_zoomRequest(URL: String; PIN: String; ZoomValue: Integer; Timeout
 function tsapi_mouseMoveRequest(URL: String; PIN: String; deltaX: Integer; deltaY: Integer; TimeoutMS: Integer): Boolean;
 function tsapi_mouseScrollRequest(URL: String; PIN: String; deltaS: Integer; TimeoutMS: Integer): Boolean;
 function tsapi_mouseClickRequest(URL: String; PIN: String; MouseButton: String; MouseState: String; TimeoutMS: Integer): Boolean;
+function tsapi_inputTextRequest(URL: String; PIN: String; InputText: String; Enter: Boolean; TimeoutMS: Integer): Boolean;
 function tsapi_BtnCodeByName(ButtonName: String): Byte;
 function tsapi_BtnDescByName(ButtonName: String): String;
 function tsapi_BtnNameByCode(ButtonCode: Byte): String;
@@ -115,6 +116,7 @@ const
   tsapi_keepAliveRequest:         String  = '<keepAliveRequest/>';
   tsapi_keepAliveResponse:        String  = '<keepAliveResponse/>';
   tsapi_ListenerPort:             Integer = 8090;
+  tsapi_TimeoutMS_Max:            Integer = 1000;
   tsapi_ButtonState_pressed:      String  = 'pressed';
   tsapi_ButtonState_released:     String  = 'released';
   tsapi_ButtonState_hold:         String  = 'hold';
@@ -123,7 +125,6 @@ const
   tsapi_MouseState_released:      String  = 'released';
   tsapi_MouseButtons:             array[0..2] of String = ('left', 'middle', 'right');
   tsapi_MouseStates:              array[0..1] of String = ('pressed', 'released');
-  tsapi_TimeoutMS_Max:            Integer = 1000;
 
   tsapi_Buttons: array[0..128] of TButton =
     (
@@ -1166,6 +1167,68 @@ begin
   on E:Exception do
     begin
       {$IFDEF FSAPI_DEBUG}E.Message:=STR_Error+'tsapi_mouseClickRequest -> '+E.Message; DebugPrint(E.Message);{$ENDIF}
+      Result:=false;
+    end;
+  end;
+end;
+
+//------------------------------------------------------------------------------
+// Input Text Request
+//------------------------------------------------------------------------------
+function tsapi_inputTextRequest(URL: String; PIN: String; InputText: String; Enter: Boolean; TimeoutMS: Integer): Boolean;
+//Input character request
+var
+  InputTextRequest:   Boolean;
+  UDPClient:          TIdUDPClient;
+
+begin
+  try
+  UDPClient:=TIdUDPClient.Create(nil);
+  InputTextRequest:=false;
+
+  //check if URL is available
+  if (URL='') then
+    begin
+      Result:=InputTextRequest;
+      exit;
+    end;
+
+  try
+    //check if device reacts on keep alive request
+    if tsapi_Info_KeepAlive(URL, TimeoutMS)=false then
+      begin
+        //keep alive failed so try to authenticate
+        if tsapi_Info_Authentication(URL, PIN, TimeoutMS)=false then
+          begin
+            //Authentication failed also therefore request can not be send
+            Result:=InputTextRequest;
+            exit;
+          end;
+      end;
+
+    if Enter=true then
+      InputText:='<inputTextRequest enter="true"><![CDATA['+InputText+']]></inputTextRequest>'
+    else
+      InputText:='<inputTextRequest enter="false"><![CDATA['+InputText+']]></inputTextRequest>';
+
+    //send input character request (there will be no response from the device)
+    UDPClient.BoundIP:=GStack.LocalAddress;
+    UDPClient.BoundPort:=tsapi_ListenerPort;
+    UDPClient.Port:=tsapi_ListenerPort;
+    UDPClient.BroadcastEnabled:=true;
+    UDPClient.Send(URL, tsapi_ListenerPort, InputText, IndyTextEncoding(encUTF8));
+
+    InputTextRequest:=true;
+  finally
+    UDPClient.Free;
+  end;
+
+  {$IFDEF LCL}Application.ProcessMessages;{$ENDIF}
+  Result:=InputTextRequest;
+  except
+  on E:Exception do
+    begin
+      {$IFDEF FSAPI_DEBUG}E.Message:=STR_Error+'tsapi_inputTextRequest -> '+E.Message; DebugPrint(E.Message);{$ENDIF}
       Result:=false;
     end;
   end;
