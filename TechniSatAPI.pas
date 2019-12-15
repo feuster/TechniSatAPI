@@ -288,12 +288,16 @@ begin
   //set default result to invalid button
   Result:=128;
 
+  //Check if string is not empty
+  if ButtonName='' then
+    exit;
+
   //allow also KEY_ for BTN_
   if LeftStr(UpperCase(ButtonName),4)='KEY_' then
     ButtonName:=StringReplace(ButtonName, 'KEY_', 'BTN_', [rfReplaceAll, rfIgnoreCase]);
 
-  //Check if string is not empty and starts with BTN_
-  if (ButtonName<>'') and (LeftStr(UpperCase(ButtonName),4)<>'BTN_') then
+  //Check if string starts with BTN_
+  if LeftStr(UpperCase(ButtonName),4)<>'BTN_' then
     exit;
 
   //Read code from array
@@ -310,7 +314,6 @@ end;
 function tsapi_BtnDescByName(ButtonName: String): String;
 //read button description from given button name
 begin
-  //set default result to invalid button
   Result:=tsapi_BtnDescByCode(tsapi_BtnCodeByName(ButtonName));
 end;
 
